@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     huggingface_model_name: str = "all-MiniLM-L6-v2"
     huggingface_api_key: SecretStr
 
+    # Reranker
+    reranker_model: str = "cross-encoder/ms-macro-MiniLM-L-6-v2"
+
     # Runtime
     environment: str = "production"
     log_level: str = "info"
