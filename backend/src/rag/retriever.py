@@ -1,5 +1,5 @@
 from langchain_core.retrievers import BaseRetriever
-from backend.src.graph.vectorstore import get_vectorstore
+from backend.src.rag.vectorstore import get_vectorstore
 
 
 from backend.core.logging import get_logger

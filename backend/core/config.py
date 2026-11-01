@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -17,7 +17,12 @@ class Settings(BaseSettings):
 
     # Embeddings
     huggingface_model_name: str = "all-MiniLM-L6-v2"
-    huggingface_api_key: SecretStr
+    huggingface_api_key: SecretStr = Field(
+        validation_alias=AliasChoices(
+            "HUGGINGFACE_API_KEY",
+            "HUGGINGFACEHUB_API_TOKEN",
+        )
+    )
 
     # Reranker
     reranker_model: str = "cross-encoder/ms-macro-MiniLM-L-6-v2"
@@ -25,6 +30,18 @@ class Settings(BaseSettings):
     # Runtime
     environment: str = "production"
     log_level: str = "info"
+
+    # Google OAuth credentials
+    google_cloud_project_id: str
+    google_client_id: str
+    google_client_secret: SecretStr
+
+    # Google MCP endpoints
+    gmail_mcp_url: str = "https://gmailmcp.googleapis.com/mcp/v1"
+    google_calendar_mcp_url: str = "https://calendarmcp.googleapis.com/mcp/v1"
+
+    # OAuth callback configured in your FastAPI application
+    google_oauth_redirect_url: str = "https://localhost:8000/auth/google/callback"
 
     model_config = SettingsConfigDict(
         env_file=".env", 

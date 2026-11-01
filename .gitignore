@@ -218,3 +218,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# OAuth credentials
+credentials.json
+token.json
+credentials(2).json

@@ -3,7 +3,7 @@ from functools import lru_cache
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
-from backend.src.graph.embeddings import get_embeddings
+from backend.src.rag.embeddings import get_embeddings
 
 from backend.core.logging import get_logger
 logger = get_logger(__name__)
