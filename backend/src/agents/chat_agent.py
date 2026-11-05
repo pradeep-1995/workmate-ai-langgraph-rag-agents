@@ -5,6 +5,8 @@ from langgraph.prebuilt import ToolNode
 
 from backend.src.graph.state import WorkmateState
 
+from backend.core.logging import get_logger
+logger = get_logger(__name__)
 
 RAG_AGENT_PROMPT = """
 You are the Knowledge Retrieval Agent in WorkMate AI.
@@ -45,9 +47,15 @@ def build_rag_agent_nodes(llm, rag_tools):
             (rag_agent_node, rag_tools_node)
     """
     if not rag_tools:
+        logger.warning("RAG Agent initialized without retrieval tools.")
         raise ValueError(
             "RAG Agent requires at least one retrieval tool."
         )
+
+    logger.info(
+        "RAG Agent initialized with tools: %s",
+        [tool.name for tool in rag_tools],
+    )
 
     rag_llm = llm.bind_tools(rag_tools)
 

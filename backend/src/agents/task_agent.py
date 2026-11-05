@@ -3,9 +3,10 @@
 from langchain_core.messages import SystemMessage
 from langgraph.prebuilt import ToolNode, tools_condition
 
-
 from backend.src.graph.state import WorkmateState
 
+from backend.core.logging import get_logger
+logger = get_logger(__name__)
 
 TASK_AGENT_PROMPT = """
 You are the Task Management Agent in WorkMate AI.
@@ -66,14 +67,33 @@ def build_task_agent_nodes(llm, task_tools):
             "Task Agent requires at least one task-management tool."
         )
 
-    task_llm_with_tools = llm.bind_tools(task_tools)
+    logger.info(
+        "Initializing Task Agent with tools: %s",
+        [tool.name for tool in task_tools],
+    )
 
-    def task_agent_node(state: WorkmateState) -> dict:
+    task_llm = llm.bind_tools(task_tools)
+
+    async def task_agent_node(state: WorkmateState) -> dict:
+
+        logger.info(
+            "Task Agent invoked with state: %s",
+            state.dict()
+        )
+
         system_message = SystemMessage(content=TASK_AGENT_PROMPT)
 
-        response = task_llm_with_tools.invoke(
+        response = await task_llm.ainvoke(
             [system_message, *state["messages"]]
         )
+
+        tool_names = [
+            call.get("name")
+            for call in getattr(response, "tool_calls", []) or []
+        ]
+
+        if tool_names:
+            logger.info("Task Agent requested tools: %s", tool_names)
 
         return {"messages": [response]}
 

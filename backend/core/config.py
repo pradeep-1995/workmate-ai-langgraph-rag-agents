@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     )
 
     # Reranker
-    reranker_model: str = "cross-encoder/ms-macro-MiniLM-L-6-v2"
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
     # Runtime
     environment: str = "production"
@@ -42,6 +42,10 @@ class Settings(BaseSettings):
 
     # OAuth callback configured in your FastAPI application
     google_oauth_redirect_url: str = "https://localhost:8000/auth/google/callback"
+
+    # Google OAuth files
+    google_credentials_file: str = "credentials(2).json"
+    google_token_file: str = "token.json"
 
     model_config = SettingsConfigDict(
         env_file=".env", 

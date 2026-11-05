@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field
 
 from backend.src.graph.state import WorkmateState
 
+from backend.core.logging import get_logger
+logger = get_logger(__name__)
 
 AgentName = Literal[
     "task",
@@ -137,9 +139,16 @@ def build_router(llm):
         )
 
         if not isinstance(decision, RouterDecision):
+            logger.error("Router returned an invalid decision: %r", decision)
             raise ValueError(
                 "The router did not return a valid RouterDecision."
             )
+
+        logger.info(
+            "Router decision: user_request = %r, selected_agent = %s",
+            user_request,
+            decision.agent
+        )
 
         return {
             "user_request": user_request,

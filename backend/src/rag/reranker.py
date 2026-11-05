@@ -4,8 +4,8 @@ from sentence_transformers import CrossEncoder
 from langchain_core.documents import Document
 
 from backend.core.config import settings
-
 from backend.core.logging import get_logger
+
 logger = get_logger(__name__)
 
 
@@ -26,7 +26,7 @@ def get_reranker() -> CrossEncoder:
 
 def reranker_documents(query: str, 
                        documents: list[Document], 
-                       top_k: int = 3) -> list[Document]:
+                       top_k: int = 2) -> list[Document]:
 
     """
     Reranker retrieved documents using a CrossEncoder.

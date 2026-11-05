@@ -6,6 +6,8 @@ from langgraph.types import interrupt
 
 from backend.src.graph.state import WorkmateState
 
+from backend.core.logging import get_logger
+logger = get_logger(__name__)
 
 COMMUNICATION_AGENT_PROMPT = """
 You are the Communication Agent in WorkMate AI.
@@ -148,11 +150,20 @@ def build_communication_agent_nodes(llm, communication_tools):
         decision = interrupt(approval_request)
 
         if decision != "approved":
+
+            logger.warning(
+                "User rejected sensitive tool calls: %s",
+                [call.get("name") for call in sensitive_calls],)
+            
             return {
                 "approval_status": "rejected",
                 "pending_action": None,
                 "error": "The requested operation was not approved.",
             }
+
+        logger.info(
+            "User approved sensitive tool calls: %s",
+            [call.get("name") for call in sensitive_calls],)
 
         return {
             "approval_status": "approved",

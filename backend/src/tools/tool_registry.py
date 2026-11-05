@@ -6,9 +6,13 @@ Authentication and authorization must be enforced separately.
 """
 
 from backend.src.mcp.mcp_client import get_tools_by_server
+from backend.core.logging import get_logger
+logger = get_logger(__name__)
+
 
 def index_tools(tools: list) -> dict:
     """Index tools by their actual MCP tool names."""
+    logger.info(f"Indexing tools: {len(tools)}")
     return {tool.name: tool for tool in tools}
 
 
@@ -36,6 +40,7 @@ def require_tools(
 async def get_agent_tools() -> dict[str, list]:
     """Discover MCP tools and group them by agent responsibility."""
 
+    logger.info("Discovering MCP tools for WorkMate AI agents...")
     tool_groups = await get_tools_by_server()
 
     workmate_tools = tool_groups["workmate"]
@@ -118,7 +123,13 @@ async def get_agent_tools() -> dict[str, list]:
             "Communication",
         ),
     ]
-
+    logger.info(
+        "Discovered tools - Task: %d, RAG: %d, Planning: %d, Communication: %d",
+        len(task_tools),
+        len(rag_tools),
+        len(planning_tools),
+        len(communication_tools)
+    )
     return {
         "task": task_tools,
         "rag": rag_tools,

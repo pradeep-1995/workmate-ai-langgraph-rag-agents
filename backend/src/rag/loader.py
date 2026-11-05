@@ -26,38 +26,29 @@ def load_pdf(file_path: str | Path) -> list[Document]:
     path = Path(file_path)
     logger.info("Starting PDF loading: %s", path)
 
-    if not path.exixts():
+    if not path.exists():
         logger.error("PDF file not found: %s", path)
         raise FileNotFoundError(
             f"PDF file not found: {path}"
         )
 
     if path.suffix.lower() != ".pdf":
-        logger.error(
-            "Unsupported file type: %s",
-            path.suffix
-        )
+        logger.error("Unsupported file type: %s", path.suffix)
         raise ValueError(
             "Only PDF files are supported."
         )
 
     try:
         loader = PyPDFLoader(str(path))
-
         documents = loader.load()
 
-        logger.info(
-            "PDF loaded successfully: %s | pages=%d",
-            path.name,
-            len(documents),
-        )
+        logger.info("PDF loaded successfully: %s | pages=%d",
+                    path.name, len(documents),
+                    )
         return documents
 
     except Exception:
-        logger.exception(
-            "Failed to load PDF: %s",
-            path,
-        )
+        logger.exception( "Failed to load PDF: %s", path,)
         raise
 
 

@@ -1,6 +1,7 @@
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+
 from backend.core.logging import get_logger
 logger = get_logger(__name__)
 

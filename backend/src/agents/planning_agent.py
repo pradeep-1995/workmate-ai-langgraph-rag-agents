@@ -5,6 +5,8 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from backend.src.graph.state import WorkmateState
 
+from backend.core.logging import get_logger
+logger = get_logger(__name__)
 
 PLANNING_AGENT_PROMPT = """
 You are the Planning and Scheduling Agent in WorkMate AI.
@@ -54,9 +56,15 @@ def build_planning_agent_nodes(llm, planning_tools):
         tuple: (planning_agent_node, planning_tools_node)
     """
     if not planning_tools:
+        logger.warning("Planning Agent received no tools.")
         raise ValueError(
             "Planning Agent requires at least one planning tool."
         )
+
+    logger.info(
+        "Planning Agent initialized with tools: %s",
+        [tool.name for tool in planning_tools],
+    )
 
     planning_llm = llm.bind_tools(planning_tools)
 

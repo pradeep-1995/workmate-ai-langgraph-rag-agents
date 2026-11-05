@@ -1,13 +1,16 @@
 from functools import lru_cache
+from pathlib import Path
 
+import chromadb
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
 from backend.src.rag.embeddings import get_embeddings
-
 from backend.core.logging import get_logger
+
 logger = get_logger(__name__)
 
+CHROMA_DIR = Path(__file__).resolve().parents[3] / "data" / "chroma_db"
 
 @lru_cache
 def get_vectorstore() -> Chroma:
@@ -18,14 +21,19 @@ def get_vectorstore() -> Chroma:
     Returns:
         Chroma: An instance of Chroma vector store.
     """
+
     embeddings = get_embeddings()
 
+    CHROMA_DIR.mkdir(parents=True, exist_ok=True)
+
     vectorstore = Chroma(
-        collection_name="workmate_ai",
-        embedding_function=embeddings,
-        persist_directory="./chroma_db"
+        collection_name = "workmate_rag",
+        embedding_function = embeddings,
+        persist_directory = str(CHROMA_DIR),
     )
 
+    logger.info("Chroma vector store initialized at: %s", CHROMA_DIR)
+    
     return vectorstore
 
 
@@ -46,9 +54,19 @@ def add_documents(documents: list[Document]) -> list[str]:
 
     vectorstore = get_vectorstore()
 
-    ids = vectorstore.add_documents(documents)
+    all_ids = []
 
-    logger.info(
-        "Documents added to Chroma | count=%d", len(ids))
+    for start in range(0, len(documents), 25):
+        batch = documents[start:start + 25]
 
-    return ids
+        ids = vectorstore.add_documents(batch)
+        all_ids.extend(ids)
+
+    logger.info("Added documents to Chroma | batch=%d | total=%d",
+                len(batch),
+                len(all_ids))
+
+
+
+    return all_ids
+

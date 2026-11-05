@@ -42,12 +42,12 @@ def rag_tool(query: str) -> dict:
 
     try:
         from backend.src.rag.retriever import get_retriever
-        from backend.src.rag.reranker import reranker_documents
+        #from backend.src.rag.reranker import reranker_documents
 
         retriever = get_retriever()
 
         # Step 1: Retrieve relevant documents
-        retrieved_docs = retriever.invoke(query)
+        retrieved_docs = retriever.invoke(query, k=4)
 
         if not retrieved_docs:
             logger.warning("No documents retrieved for query: %s", query)
@@ -60,11 +60,15 @@ def rag_tool(query: str) -> dict:
             }
 
         # Step 2: Rerank retrieved documents
-        ranked_docs = reranker_documents(
-            query=query,
-            documents=retrieved_docs,
-            top_k=3,
-        )
+        #ranked_docs = reranker_documents(
+        #    query=query,
+        #    documents=retrieved_docs,
+        #    top_k=3,
+        #)
+
+        # For now, we will skip reranking and just return the retrieved documents
+        ranked_docs = retrieved_docs[:3]
+
 
         if not ranked_docs:
             logger.warning("No documents returned after reranking: %s", query)
