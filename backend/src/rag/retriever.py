@@ -1,10 +1,9 @@
 #from langchain_core.retrievers import BaseRetriever
 from backend.src.rag.vectorstore import get_vectorstore
-
-
 from backend.core.logging import get_logger
-logger = get_logger(__name__)
 
+
+logger = get_logger(__name__)
 
 def get_retriever():
     """

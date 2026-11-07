@@ -47,7 +47,7 @@ def rag_tool(query: str) -> dict:
         retriever = get_retriever()
 
         # Step 1: Retrieve relevant documents
-        retrieved_docs = retriever.invoke(query, k=4)
+        retrieved_docs = retriever.invoke(query)
 
         if not retrieved_docs:
             logger.warning("No documents retrieved for query: %s", query)

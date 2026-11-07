@@ -41,6 +41,7 @@ async def get_agent_tools() -> dict[str, list]:
     """Discover MCP tools and group them by agent responsibility."""
 
     logger.info("Discovering MCP tools for WorkMate AI agents...")
+    
     tool_groups = await get_tools_by_server()
 
     workmate_tools = tool_groups["workmate"]
@@ -117,12 +118,13 @@ async def get_agent_tools() -> dict[str, list]:
             calendar_by_name,
             {
                 "create_calendar_event",
-                "update_calendar_event",
-                "delete_calendar_event",
+                "list_calendar_events",
             },
             "Communication",
         ),
     ]
+
+
     logger.info(
         "Discovered tools - Task: %d, RAG: %d, Planning: %d, Communication: %d",
         len(task_tools),

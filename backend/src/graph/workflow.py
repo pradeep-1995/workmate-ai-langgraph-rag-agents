@@ -178,5 +178,9 @@ def build_workmate_graph(llm,
     compiled_graph = graph.compile(checkpointer=checkpointer)
     logger.info("WorkMate AI LangGraph workflow compiled successfully.")
 
+    # Print Mermaid diagram
+    print(compiled_graph.get_graph().draw_mermaid())
+
     return compiled_graph
+
 

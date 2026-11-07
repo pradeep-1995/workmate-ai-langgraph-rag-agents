@@ -18,7 +18,7 @@ def get_llm() -> ChatOpenRouter:
         model = settings.openrouter_model_name,
         api_key = settings.openrouter_api_key.get_secret_value(),
         temperature = 0.1,
-        max_tokens = 100,
+        max_tokens = 1024,
         max_retries = 3,
     )
 

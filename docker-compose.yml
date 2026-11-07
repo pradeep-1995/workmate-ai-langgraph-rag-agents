@@ -1,0 +1,22 @@
+services:
+  workmate-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: workmate-api
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - .env
+
+    volumes:
+      # Persist the Chroma vector database
+      - workmate-vector-data:/data/chroma_db
+
+    restart: unless-stopped
+
+volumes:
+  workmate-vector-data:

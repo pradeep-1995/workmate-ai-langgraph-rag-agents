@@ -1,172 +1,179 @@
-# src/graph/router.py
+"""
+Router node for WorkMate AI.
 
-from typing import Literal
+Classifies the user request and routes it to the correct agent.
+"""
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
-
-from backend.src.graph.state import WorkmateState
+import json
+import re
 
 from backend.core.logging import get_logger
+
 logger = get_logger(__name__)
 
-AgentName = Literal[
+
+VALID_AGENTS = {
     "task",
     "rag",
     "planning",
     "communication",
-]
-
-
-class RouterDecision(BaseModel):
-    """Structured routing decision."""
-
-    agent: AgentName = Field(
-        description="The agent that should handle the user's request."
-    )
-
-
-ROUTER_PROMPT = """
-You are the supervisor router for WorkMate AI.
-
-Select exactly one agent based on the user's current request.
-
-Available agents:
-
-1. task
-   Use for creating, updating, deleting, completing, or listing tasks.
-
-2. rag
-   Use for questions about knowledge-base documents, uploaded files,
-   retrieved information, or productivity concepts.
-
-3. planning
-   Use for planning schedules, checking calendar availability,
-   creating calendar events, or organizing tasks into a schedule.
-
-4. communication
-   Use for searching emails, reading emails, drafting emails,
-   and sending emails.
-
-Routing rules:
-- Select the agent whose responsibility best matches the request.
-- Use the recent conversation context when the latest message depends
-  on previous messages.
-- For requests involving multiple operations, select the agent
-  responsible for the first operation that should be performed.
-- Do not execute tools or perform actions yourself.
-- Do not make authorization decisions.
-- Return only a valid structured routing decision.
-"""
-
-
-def _extract_message_content(message) -> str:
-    """Extract readable text from a LangChain message."""
-
-    content = getattr(message, "content", "")
-
-    if isinstance(content, str):
-        return content
-
-    if isinstance(content, list):
-        text_parts = []
-
-        for block in content:
-            if isinstance(block, dict) and block.get("type") == "text":
-                text_parts.append(block.get("text", ""))
-
-        return "\n".join(text_parts)
-
-    return ""
-
-
-def _get_user_request(state: WorkmateState) -> str:
-    """Get the current request, falling back to the latest human message."""
-
-    user_request = state.get("user_request", "")
-
-    if isinstance(user_request, str) and user_request.strip():
-        return user_request.strip()
-
-    messages = state.get("messages", [])
-
-    for message in reversed(messages):
-        if isinstance(message, HumanMessage):
-            content = _extract_message_content(message)
-
-            if content.strip():
-                return content.strip()
-
-    raise ValueError(
-        "Cannot route the request: no user request or human message found."
-    )
-
-
-def _get_recent_messages(
-        state: WorkmateState, 
-        max_messages: int = 10,
-        ) -> list:
-    
-    """Return the most recent conversation messages for routing context."""
-    messages = state.get("messages", [])
-    return messages[-max_messages:]
+}
 
 
 def build_router(llm):
     """
-    Build the supervisor router.
+    Build the router node.
 
-    The router classifies a request and returns a state update.
-    It does not execute tools or authorize operations.
+    Args:
+        llm: Chat model.
+
+    Returns:
+        A router node function for LangGraph.
     """
-    router_llm = llm.with_structured_output(RouterDecision)
 
-    async def router_node(state: WorkmateState) -> dict:
-        user_request = _get_user_request(state)
-        recent_messages = _get_recent_messages(state)
+    async def router_node(state: dict) -> dict:
+        """
+        Decide which specialist agent should handle the request.
+        """
 
-        decision = await router_llm.ainvoke(
-            [
-                SystemMessage(content=ROUTER_PROMPT),
-                *recent_messages,
-                HumanMessage(
-                    content=(
-                        f"Current user request:\n{user_request}\n\n"
-                        "Return the correct agent."
-                    )
-                ),
-            ]
-        )
+        messages = state.get("messages", [])
 
-        if not isinstance(decision, RouterDecision):
-            logger.error("Router returned an invalid decision: %r", decision)
-            raise ValueError(
-                "The router did not return a valid RouterDecision."
+        if not messages:
+            return {
+                "router_decision": {
+                    "agent": "rag",
+                    "reason": "No user message was provided.",
+                }
+            }
+
+        system_prompt = """
+You are the router for WorkMate AI.
+
+Choose exactly one agent to handle the user's request.
+
+Return ONLY valid JSON in this exact format:
+
+{
+  "agent": "task",
+  "reason": "short explanation"
+}
+
+Allowed values for agent:
+- "task": create, update, complete, delete, or list tasks
+- "rag": questions about documents, PDFs, product knowledge, workflows, policies, concepts, or factual information in the knowledge base
+- "planning": plan work, check availability, schedule tasks, or combine tasks with calendar availability
+- "communication": search/read/draft/send email, or create calendar events
+
+If the request is ambiguous, choose the most likely agent.
+Do not return markdown. Do not return explanations outside JSON.
+"""
+
+        try:
+            response = await llm.ainvoke(
+                [
+                    {
+                        "role": "system",
+                        "content": system_prompt,
+                    },
+                    *messages,
+                ]
             )
 
+            raw_content = getattr(response, "content", "")
+
+            decision = parse_router_response(raw_content)
+
+        except Exception:
+            logger.exception("Router LLM call failed")
+
+            decision = {
+                "agent": "rag",
+                "reason": (
+                    "Router failed, so the request was sent to the RAG agent."
+                ),
+            }
+
         logger.info(
-            "Router decision: user_request = %r, selected_agent = %s",
-            user_request,
-            decision.agent
+            "Router decision: %s | %s",
+            decision["agent"],
+            decision["reason"],
         )
 
         return {
-            "user_request": user_request,
-            "selected_agent": decision.agent,
-            "error": None,
+            "router_decision": decision,
         }
 
     return router_node
 
 
-def route_to_agent(state: WorkmateState) -> AgentName:
-    """Select the next graph node using the router's decision."""
+def parse_router_response(raw_content: str) -> dict:
+    """
+    Parse the router response safely.
 
-    selected_agent = state.get("selected_agent")
+    Always returns a valid routing decision.
+    """
 
-    if selected_agent is None:
-        raise ValueError(
-            "No agent selected. Execute the router node before routing."
+    fallback = {
+        "agent": "rag",
+        "reason": "Router response could not be parsed.",
+    }
+
+    if not raw_content:
+        logger.warning("Router returned empty content.")
+        return fallback
+
+    content = raw_content.strip()
+
+    # Remove Markdown code fences if the model adds them.
+    content = re.sub(
+        r"^```(?:json)?\s*|\s*```$",
+        "",
+        content,
+        flags=re.IGNORECASE,
+    ).strip()
+
+    try:
+        data = json.loads(content)
+
+        agent = str(data.get("agent", "")).strip().lower()
+        reason = str(data.get("reason", "")).strip()
+
+        if agent in VALID_AGENTS:
+            return {
+                "agent": agent,
+                "reason": reason or "No reason provided.",
+            }
+
+        logger.warning("Invalid router agent: %s", agent)
+
+        return fallback
+
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        logger.warning(
+            "Router returned non-JSON content: %s",
+            content[:300],
         )
+        return fallback
 
-    return selected_agent
+
+def route_to_agent(state: dict) -> str:
+    """
+    Convert the router decision into the next LangGraph node.
+    """
+
+    decision = state.get("router_decision")
+
+    if not decision:
+        logger.warning("No router decision found. Using RAG fallback.")
+        return "rag"
+
+    agent = decision.get("agent")
+
+    if agent not in VALID_AGENTS:
+        logger.warning(
+            "Invalid router decision: %s. Using RAG fallback.",
+            agent,
+        )
+        return "rag"
+
+    return agent
