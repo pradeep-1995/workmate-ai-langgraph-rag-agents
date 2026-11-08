@@ -22,7 +22,7 @@ COPY backend ./backend
 # Create non-root user and prepare writable data directory
 RUN useradd --create-home appuser \
     && mkdir -p /data/chroma_db \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app /data/chroma_db
 
 USER appuser
 
