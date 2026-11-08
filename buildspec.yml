@@ -1,53 +1,44 @@
+
 version: 0.2
 
 env:
   variables:
-    AWS_DEFAULT_REGION: ap-southeast-2
-    ECR_REPOSITORY: workmate-backend
+    AWS_DEFAULT_REGION: "ap-southeast-2"
+    ECR_REPOSITORY: "workmate-backend"
 
 phases:
-
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - REPOSITORY_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      - |
+        set -e
+        echo "Logging in to Amazon ECR"
+
+        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+        REPOSITORY_URI="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ECR_REPOSITORY}"
+
+        IMAGE_TAG=$(echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" | cut -c 1-7)
+
+        aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REPOSITORY_URI"
+
+        echo "ECR login successful"
+        echo "Repository: $REPOSITORY_URI"
+        echo "Image tag: $IMAGE_TAG"
 
   build:
     commands:
-      - echo Building Docker image
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - |
+        set -e
+        echo "Building Docker image"
+
+        docker build -t "${REPOSITORY_URI}:${IMAGE_TAG}" .
 
   post_build:
     commands:
-      - echo Pushing Docker image to ECR
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Build completed successfullyversion: 0.2
+      - |
+        set -e
+        echo "Pushing Docker image to ECR"
 
-env:
-  variables:
-    AWS_DEFAULT_REGION: ap-south-1
-    ECR_REPOSITORY: workmate-backend
+        docker push "${REPOSITORY_URI}:${IMAGE_TAG}"
 
-phases:
-
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR
-      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-      - REPOSITORY_URI=$ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$ECR_REPOSITORY
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-
-  build:
-    commands:
-      - echo Building Docker image
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-
-  post_build:
-    commands:
-      - echo Pushing Docker image to ECR
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Build completed successfully
+        echo "Docker image pushed successfully"
